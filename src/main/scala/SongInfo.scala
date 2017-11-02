@@ -1,3 +1,5 @@
+import scala.util.Try
+
 class SongInfo (track : String, du : String, ld : String, sh : String, ah : String, tp: String) extends Serializable{
   var TRACK_ID : String = track
   var DURATION : String = du
@@ -6,28 +8,12 @@ class SongInfo (track : String, du : String, ld : String, sh : String, ah : Stri
   var ARTIST_HOT : String = ah
   var TEMPO : String = tp
 
-//  private def tokens = line.split(";")
-//  var TRACK_ID = tokens(0)
-//  var ARTIST_ID = tokens(16)
-//  var ALBUM = tokens(22)
-//  var DURATION = tokens(5)
-//  var LOUDNESS = tokens(6)
-//  var SONG_HOTNESS = tokens(25)
-//  var ARTIST_HOT = tokens(20)
-//  var TEMPO = tokens(7)
-//  var FAMILIARITY = tokens(19)
-//  var KEY = tokens(8)
-//  var KEY_CONFIDENCE = tokens(9)
-//  var SONG_TITLE = tokens(24)
-//  var ARTIST_ID_IN_TERM = tokens(0)
-//  var ARTIST_TERM = tokens(1)
 
 
   def this(line : String) ={
-    //    def tokens = line.split(";")
     this("","","","","","")
     def tokens = line.split(";")
-    var TRACK_ID = tokens(0)
+    this.TRACK_ID = tokens(0)
     this.TRACK_ID = tokens(16)
     this.DURATION = tokens(5)
     this LOUDNESS = tokens(6)
@@ -39,22 +25,64 @@ class SongInfo (track : String, du : String, ld : String, sh : String, ah : Stri
 
 
   def this(value : Double, symbol: Symbol) ={
-    //    def tokens = line.split(";")
     this("","","","","","")
     symbol match {
       case 'fuzzyLoudness => this.LOUDNESS = value.toString
+      case 'fuzzyLength => this.DURATION = value.toString
+      case 'fuzzyTempo => this.TEMPO = value.toString
+      case 'fuzzyHotness => this.SONG_HOTNESS = value.toString
+    }
+  }
+
+  def this(songHot : Double, artistHot : Double, symbol: Symbol) ={
+    this("","","","","","")
+    symbol match {
+      case 'combinedHotness => {
+        this.SONG_HOTNESS = songHot.toString
+        this.ARTIST_HOT = artistHot.toString}
     }
   }
 
 
 
-  def calculateDistance(sf : SongInfo, symbol: Symbol): Double ={
+
+
+  def calculateDistance(sf : SongInfo, symbol: Symbol): Double = {
     symbol match{
       case 'fuzzyLoudness => get1DimensionDistance(sf.LOUDNESS.toDouble, this.LOUDNESS.toDouble)
+      case 'fuzzyLength => get1DimensionDistance(sf.DURATION.toDouble, this.DURATION.toDouble)
+      case 'fuzzyTempo => get1DimensionDistance(sf.TEMPO.toDouble, this.TEMPO.toDouble)
+      case 'fuzzyHotness => get1DimensionDistance(sf.SONG_HOTNESS.toDouble, this.SONG_HOTNESS.toDouble)
+      case 'combinedHotness => get2DimensionDistance(sf.SONG_HOTNESS.toDouble, sf.ARTIST_HOT.toDouble)
       case _ => 0.0
     }
   }
 
   def get1DimensionDistance(p1 : Double, p2 : Double) = math.abs(p1 - p2)
+
+  def get2DimensionDistance(p1 : Double, p2 : Double) = math.pow(math.pow(p1 - this.SONG_HOTNESS.toDouble, 2) + math.pow(p2 - this.ARTIST_HOT.toDouble, 2) ,0.5)
+
+  def getSymbol(symbol: Symbol): String = {
+    symbol match{
+      case 'fuzzyLoudness => this.LOUDNESS
+      case 'fuzzyLength => this.DURATION
+      case 'fuzzyTempo => this.TEMPO
+      case 'fuzzyHotness => this.SONG_HOTNESS
+      case 'combinedHotness => this.SONG_HOTNESS + "_" + this.ARTIST_HOT
+      case _ => ""
+    }
+  }
+
+  def isValid(symbol: Symbol) : Boolean = {
+    symbol match{
+      case 'fuzzyLoudness => Try(this.LOUDNESS.toDouble).isSuccess
+      case 'fuzzyLength => Try(this.DURATION.toDouble).isSuccess
+      case 'fuzzyTempo => Try(this.TEMPO.toDouble).isSuccess
+      case 'fuzzyHotness => Try(this.SONG_HOTNESS.toDouble).isSuccess
+      case 'combinedHotness => Try(this.SONG_HOTNESS.toDouble).isSuccess && Try(this.ARTIST_HOT.toDouble).isSuccess
+      case _ => false
+    }
+  }
+
 }
 
