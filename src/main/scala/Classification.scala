@@ -1,7 +1,10 @@
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
-
 import scala.util.{Random, Try}
+
+/**
+  * @author Ankita,Jiangtao
+  */
 
 object Classification {
   def kCluster = 3
@@ -10,7 +13,8 @@ object Classification {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf().setMaster("local").setAppName("Million Classification")
     val sc = new SparkContext(conf)
-    val input = sc.textFile("MillionSongSubset/song_info.csv")
+    sc.setLogLevel("ERROR")
+    val input = sc.textFile("input/song_info.csv")
     val songInfos = input.mapPartitionsWithIndex { (idx, iterate) => if (idx == 0) iterate.drop(1) else iterate }.map(line => new SongInfo(line))
     val centroids = new Array[SongInfo](kCluster)
 
@@ -27,29 +31,33 @@ object Classification {
     }
 
     val fuzzyLoudnessCentroids = runKmeans(songInfos,centroids,'fuzzyLoudness )
+    val fuzzyLoudnessClusters = getClusterByCentroids(songInfos,fuzzyLoudnessCentroids, 'fuzzyLoudness)
+    val outString = StringBuilder.newBuilder
+    outString.append(" ")
+    val outData = fuzzyLoudnessClusters.map {x => x._2.map{y => (x._1 + " , " + y.getSymbol('fuzzyLoudness)+ "|")}}
+    outData.saveAsTextFile("output/K-loudness")
+    outString.clear()
+
     val fuzzyLengthCentroids = runKmeans(songInfos,centroids,'fuzzyLength )
+    val fuzzyLengthClusters = getClusterByCentroids(songInfos,fuzzyLengthCentroids, 'fuzzyLength)
+    val outDataDuration = fuzzyLengthClusters.map {x => x._2.map{y => (x._1 + " , " + y.getSymbol('fuzzyLength)+ "|")}}
+    outDataDuration.saveAsTextFile("output/K-duration")
+    outString.clear()
+
     val fuzzyTempoCentroids = runKmeans(songInfos,centroids,'fuzzyTempo )
-    val fuzzyHotness = runKmeans(songInfos,centroids,'fuzzyHotness )
-    val combinedHotnessCentroids = runKmeans(songInfos,centroids,'combinedHotness )
-    for (e <- 0 until fuzzyLoudnessCentroids.size){
-      System.out.println(fuzzyLoudnessCentroids(e).getSymbol('fuzzyLoudness))
-    }
-    System.out.println("")
-    for (e <- 0 until fuzzyLengthCentroids.size){
-      System.out.println(fuzzyLengthCentroids(e).getSymbol('combinedHotness))
-    }
-    System.out.println("")
-    for (e <- 0 until fuzzyTempoCentroids.size){
-      System.out.println(fuzzyTempoCentroids(e).getSymbol('fuzzyTempo))
-    }
-    System.out.println("")
-    for (e <- 0 until fuzzyHotness.size){
-      System.out.println(fuzzyHotness(e).getSymbol('fuzzyHotness))
-    }
-    System.out.println("")
-    for (e <- 0 until combinedHotnessCentroids.size){
-      System.out.println(combinedHotnessCentroids(e).getSymbol('combinedHotness))
-    }
+    val fuzzyTempoClusters = getClusterByCentroids(songInfos,fuzzyTempoCentroids, 'fuzzyTempo)
+    val outDataTempo = fuzzyTempoClusters.map {x => x._2.map{y => (x._1 + " , " + y.getSymbol('fuzzyTempo)+ "|")}}
+    outDataTempo.saveAsTextFile("output/K-tempo")
+    outString.clear()
+
+
+//    for (e <- 0 until fuzzyHotness.size){
+//      System.out.println(fuzzyHotness(e).getSymbol('fuzzyHotness))
+//    }
+//    System.out.println("")
+//    for (e <- 0 until combinedHotnessCentroids.size){
+//      System.out.println(combinedHotnessCentroids(e).getSymbol('combinedHotness))
+//    }
   }
 
   def runKmeans(songInfos : RDD[SongInfo],centroids: Seq[SongInfo], symbol: Symbol): Seq[SongInfo] = {
@@ -66,7 +74,6 @@ object Classification {
       // recalculate centroids
       centroids = getCentroids(clusters, symbol)
     }
-
     return centroids
   }
 
@@ -77,6 +84,7 @@ object Classification {
         if ((song.calculateDistance(a, symbol) ) < (song.calculateDistance(b, symbol))) a
         else b).getSymbol(symbol)})
   }
+
 
   def getCentroids(clusters : RDD[(String, Iterable[SongInfo])], symbol: Symbol ) : Seq[SongInfo]= {
     symbol match {

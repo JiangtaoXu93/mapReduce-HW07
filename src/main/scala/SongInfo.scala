@@ -1,5 +1,9 @@
 import scala.util.Try
 
+/**
+  * @author Ankita,Jiangtao
+  */
+
 class SongInfo (track : String, du : String, ld : String, sh : String, ah : String, tp: String) extends Serializable{
   var TRACK_ID : String = track
   var DURATION : String = du
@@ -7,8 +11,6 @@ class SongInfo (track : String, du : String, ld : String, sh : String, ah : Stri
   var SONG_HOTNESS : String = sh
   var ARTIST_HOT : String = ah
   var TEMPO : String = tp
-
-
 
   def this(line : String) ={
     this("","","","","","")
@@ -21,8 +23,6 @@ class SongInfo (track : String, du : String, ld : String, sh : String, ah : Stri
     this ARTIST_HOT = tokens(20)
     this TEMPO = tokens(7)
   }
-
-
 
   def this(value : Double, symbol: Symbol) ={
     this("","","","","","")
@@ -42,10 +42,6 @@ class SongInfo (track : String, du : String, ld : String, sh : String, ah : Stri
         this.ARTIST_HOT = artistHot.toString}
     }
   }
-
-
-
-
 
   def calculateDistance(sf : SongInfo, symbol: Symbol): Double = {
     symbol match{
